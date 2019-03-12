@@ -1,11 +1,12 @@
 % This function calculates the scaling exponent alpha, plus other
 % metrics. It does fitting in logarithmic space
-function [alpha,Rsqrd, b_index] = routine_dfa_fit(n_vec,F_n,res,weights)
+function [alpha,Rsqrd, b_index,conf] = routine_dfa_fit(n_vec,F_n,res,weights)
     
     % calculate linear and parabolic regression
 %     reg1 = polyfit(n_vec,F_n,1);
     X = [ones(size(n_vec')) n_vec'];
-    reg1 = flipud(lscov(X,F_n',weights'))';
+    [reg1,stdX] = lscov(X,F_n',weights');
+    reg1 = flipud(reg1)';
     reg2 = polyfit(n_vec,F_n,2);
 
     % calculare parameters for R-squared
@@ -19,7 +20,8 @@ function [alpha,Rsqrd, b_index] = routine_dfa_fit(n_vec,F_n,res,weights)
     % calculate parameters for parabolic index b
     E1 = rms(Ffit1-F_n);
     E2 = rms(Ffit2-F_n);
-
+    
+    conf = 1.96*stdX(2);
     Rsqrd = 1 - SSresid/SStotal;
     b_index = 1 - E2/E1;
     alpha = reg1(1);

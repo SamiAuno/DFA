@@ -1,5 +1,5 @@
 % this function computes the data fluctuation
-function [F,count] = routine_fluctuation(DATA, n, N_data, N_chan, avgFlag)
+function [F,F_var] = routine_fluctuation(DATA, n, N_data, N_chan, avgFlag)
 
     div = floor(2*(N_data - n)/n) + 1;
 
@@ -15,7 +15,7 @@ function [F,count] = routine_fluctuation(DATA, n, N_data, N_chan, avgFlag)
     end
 
     % Detrend segments
-    parfor d=1:N_chan*div
+    for d=1:N_chan*div
         detrended_DATA_segments(d,:) = detrend(DATA_segments(d,:));
     end
 
@@ -30,18 +30,20 @@ function [F,count] = routine_fluctuation(DATA, n, N_data, N_chan, avgFlag)
     % three sigma exclusion threshold
     % take the standard deviation of detrended_DATA_std over all channels
     % and exclude all values that are over 3 sigmas away from the median
-    F_std = std(detrended_DATA_std(:));
-    Fmedian = median(detrended_DATA_std(:));
-    exclusion_threshold = [Fmedian - 3*F_std, Fmedian + 3*F_std];
+%     F_std = std(detrended_DATA_std(:));
+%     Fmedian = median(detrended_DATA_std(:));
+%     exclusion_threshold = [Fmedian - 3*F_std, Fmedian + 3*F_std];
+    
+    F_var = var(detrended_DATA_std,0,2);
     
     % exclude outliers and calculate fluctuation channel by channel
-    count = zeros(N_chan,1);
+%     counts = zeros(N_chan,1);
     F = zeros(N_chan,1);
     for ch=1:N_chan
         y = detrended_DATA_std(ch,:);
-        y = y(y>exclusion_threshold(1) & y<exclusion_threshold(2));
+%         y = y(y>exclusion_threshold(1) & y<exclusion_threshold(2));
         
-        count(ch,1) = length(y)/div;
+%         counts(ch,1) = length(y)/div;
         if avgFlag == 2
             F(ch,1) = median(y,2);
         elseif avgFlag == 1 || isempty(avgFlag)

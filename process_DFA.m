@@ -13,7 +13,7 @@ function varargout = process_DFA( varargin )
 
 % ----------------------------------------------------------------------
 %
-% Author: Sami Auno, University of Helsinki, September 2018
+% Author: Sami Auno, University of Helsinki, 2018
 % 
 % ----------------------------------------------------------------------
 
@@ -26,17 +26,17 @@ function sProcess = GetDescription()
     % Description the process
     sProcess.Comment     = 'Detrended Fluctuation Analysis [test]';
     sProcess.FileTag     = 'DFA';
-    sProcess.Category    = 'Filter';
+    sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 650;
     sProcess.isSeparator = 1;
     sProcess.Description = '';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'raw', 'matrix'};
-    sProcess.OutputTypes = {'data', 'results', 'raw', 'matrix'};
+    sProcess.InputTypes  = {'results'};
+    sProcess.OutputTypes = {'results'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.processDim  = 1;   % Process channel by channel
+%     sProcess.processDim  = 1;   % Process channel by channel
     sProcess.isSourceAbsolute = 0;
     
     % Definition of the options
@@ -59,15 +59,15 @@ function sProcess = GetDescription()
     sProcess.options.label2.Comment = '<U><B>DFA analysis paramenters</B></U>';
     sProcess.options.label2.Type    = 'label';
     
-    sProcess.options.minTimeWindow.Comment = 'Minimum time window size:';
+    sProcess.options.minTimeWindow.Comment = 'Minimum DFA time window size:';
     sProcess.options.minTimeWindow.Type    = 'value';
     sProcess.options.minTimeWindow.Value   = {0,'s ',3};
     
-    sProcess.options.maxTimeWindow.Comment = 'Maximum time window size:';
+    sProcess.options.maxTimeWindow.Comment = 'Maximum DFA time window size:';
     sProcess.options.maxTimeWindow.Type    = 'value';
     sProcess.options.maxTimeWindow.Value   = {0,'s ',3};
     
-    sProcess.options.numTimeWindows.Comment = 'Number of time windows:';
+    sProcess.options.numTimeWindows.Comment = 'Number of DFA time windows:';
     sProcess.options.numTimeWindows.Type    = 'value';
     sProcess.options.numTimeWindows.Value   = {20, '',0};
     
@@ -93,79 +93,77 @@ end
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess)
     % Get time window
-    Comment = [sProcess.Comment, ': [', process_extract_time('GetTimeString', sProcess), ']'];
-    % Absolute values 
-    if isfield(sProcess.options, 'source_abs') && sProcess.options.source_abs.Value
-        Comment = [Comment, ', abs'];
-    end
+    Comment = sProcess.Comment;
 end
 
-%% ===== GET TIME STRING =====
-function strTime = GetTimeString(sProcess, sInput)
-    % Get time window
-    if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
-        time = sProcess.options.timewindow.Value{1};
-    elseif (nargin >= 2) && isfield(sInput, 'TimeVector') && ~isempty(sInput.TimeVector)
-        time = sInput.TimeVector([1 end]);
-    else
-        time = [];
-    end
-    % Print time window
-    if ~isempty(time)
-        if any(abs(time) > 2)
-            if (time(1) == time(2))
-                strTime = sprintf('%1.3fs', time(1));
-            else
-                strTime = sprintf('%1.3fs,%1.3fs', time(1), time(2));
-            end
-        else
-            if (time(1) == time(2))
-                strTime = sprintf('%dms', round(time(1)*1000));
-            else
-                strTime = sprintf('%dms,%dms', round(time(1)*1000), round(time(2)*1000));
-            end
-        end
-    else
-        strTime = 'all';
-    end
-end
+% %% ===== GET TIME STRING =====
+% function strTime = GetTimeString(sProcess, sInput)
+%     % Get time window
+%     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
+%         time = sProcess.options.timewindow.Value{1};
+%     elseif (nargin >= 2) && isfield(sInput, 'TimeVector') && ~isempty(sInput.TimeVector)
+%         time = sInput.TimeVector([1 end]);
+%     else
+%         time = [];
+%     end
+%     % Print time window
+%     if ~isempty(time)
+%         if any(abs(time) > 2)
+%             if (time(1) == time(2))
+%                 strTime = sprintf('%1.3fs', time(1));
+%             else
+%                 strTime = sprintf('%1.3fs,%1.3fs', time(1), time(2));
+%             end
+%         else
+%             if (time(1) == time(2))
+%                 strTime = sprintf('%dms', round(time(1)*1000));
+%             else
+%                 strTime = sprintf('%dms,%dms', round(time(1)*1000), round(time(2)*1000));
+%             end
+%         end
+%     else
+%         strTime = 'all';
+%     end
+% end
 
 %% ===== RUN =====
-function sInput = Run(sProcess, sInput)
+function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
+    OutputFiles = {};
+    
+    % ===== LOAD ALL INFO =====
+    % Load the surface filename from results file
+    ResultsMat = in_bst_results(sInput.FileName, 0);
     % Get time window
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value{1})
-        iTime = panel_time('GetTimeIndices', sInput.TimeVector, sProcess.options.timewindow.Value{1});
+        iTime = panel_time('GetTimeIndices', ResultsMat.Time, sProcess.options.timewindow.Value{1});
     else
-        iTime = 1:length(sInput.TimeVector);
+        iTime = 1:length(ResultsMat.Time);
     end
     if isempty(iTime)
-        bst_report('Error', sProcess, [], 'Invalid time definition.');
-        sInput = [];
+        bst_report('Error', sProcess, sInput, 'Invalid time definition.');
         return;
     end
     
     if isfield(sProcess.options, 'minTimeWindow') && isfield(sProcess.options.minTimeWindow, 'Value') && iscell(sProcess.options.minTimeWindow.Value) && ~isempty(sProcess.options.minTimeWindow.Value) && ~isempty(sProcess.options.minTimeWindow.Value{1})
         minTimeWindow = sProcess.options.minTimeWindow.Value{1};
     else
-        minTimeWindow = sInput.TimeVector(1);
+        minTimeWindow = 100*(ResultsMat.Time(2)-ResultsMat.Time(1));
     end
     if isempty(minTimeWindow)
-        bst_report('Error', sProcess, [], 'Invalid minimum time window definition.');
-        sInput = [];
+        bst_report('Error', sProcess, sInput, 'Invalid minimum time window definition.');
         return;
     end
     
     if isfield(sProcess.options, 'maxTimeWindow') && isfield(sProcess.options.maxTimeWindow, 'Value') && iscell(sProcess.options.maxTimeWindow.Value) && ~isempty(sProcess.options.maxTimeWindow.Value) && ~isempty(sProcess.options.maxTimeWindow.Value{1})
         maxTimeWindow = sProcess.options.maxTimeWindow.Value{1}; 
     else
-        maxTimeWindow = sInput.TimeVector(end);
+        maxTimeWindow = (ResultsMat.Time(iTime(end))-ResultsMat.Time(iTime(1)))/10; % 10 % of the recording length
     end
     if maxTimeWindow == 0
-        maxTimeWindow = sInput.TimeVector(end);
+        maxTimeWindow = (ResultsMat.Time(iTime(end))-ResultsMat.Time(iTime(1)))/10; % 10 % of the recording length
     end
     if isempty(maxTimeWindow)|| maxTimeWindow < minTimeWindow
-        bst_report('Error', sProcess, [], 'Invalid maximum time window definition.');
-        sInput = [];
+        bst_report('Error', sProcess, sInput, 'Invalid maximum time window definition.');
         return;
     end
     
@@ -175,8 +173,7 @@ function sInput = Run(sProcess, sInput)
         numTimeWindows = uint8(20);
     end
     if isempty(numTimeWindows)
-        bst_report('Error', sProcess, [], 'Invalid number of time windows.');
-        sInput = [];
+        bst_report('Error', sProcess, sInput, 'Invalid number of time windows.');
         return;
     end
     
@@ -187,76 +184,133 @@ function sInput = Run(sProcess, sInput)
         avgtag = 'mean';
     end
     
-    data = sInput.A;
+%     data = sInput.A;
     protocolInfo = bst_get('ProtocolInfo');
+    freq = length(ResultsMat.Time)/diff(ResultsMat.Time([1,end]));
 %     sInput.Fluctuation = [];
     
     % remove segments that contain the word 'remove'
     if (sProcess.options.removeSeg.Value)
-        Events = load(fullfile(protocolInfo.STUDIES,sInput.DataFile),'Events');
+        Events = load(fullfile(protocolInfo.STUDIES,ResultsMat.DataFile),'Events');
         Events = Events.Events;
 
         nDiffEvents = length(Events);
 
-        if(nDiffEvents > 0 && sProcess.options.removeSeg.Value)
+        if(nDiffEvents > 0)
 
-            dF = size(sInput.A,2)/(sInput.TimeVector(end) - sInput.TimeVector(1));
-
+%             dF = size(sInput.A,2)/(sInput.TimeVector(end) - sInput.TimeVector(1));
+            iGoodSegments = logical(ones(size(ResultsMat.Time)));                   % indeces of good segments
+            
             for i=1:nDiffEvents
                 if (~isempty(regexp(Events(i).label,'\w*remove', 'once')) || ~isempty(regexp(Events(i).label,'transient', 'once')) )
-                    segments = round((Events(i).times(:,:) - sInput.TimeVector(1) ).*dF + 1);
+                    segments = round((Events(i).times(:,:) - ResultsMat.Time(1) ).*freq + 1);
                     if size(segments,1) == 1
                         for j=1:size(segments,2)
-                            data(:,segments(1,j)) = nan;
+                            iGoodSegments(1,segments(1,j)) = false;
+%                             data(:,segments(1,j)) = nan;
                         end
                     elseif size(segments,1) == 2
                         for j=1:size(segments,2)
-                            data(:,segments(1,j):segments(2,j)) = nan;
+                            iGoodSegments(1,segments(1,j):segments(2,j)) = false;
+%                             data(:,segments(1,j):segments(2,j)) = nan;
                         end
                     end
                 end
             end
-
-            data = data(:,~isnan(data(1,:)));
-            iTime = 1:size(data,2);
+            iGoodSegments = iGoodSegments(1,iTime);
+%             data = data(:,~isnan(data(1,:)));
+            iTime = iTime(1,iGoodSegments);
         end
     end
     
-    frequency = length(sInput.TimeVector)/diff(sInput.TimeVector([1,end]));
+%     frequency = length(ResultsMat.Time)/diff(ResultsMat.Time([1,end]));
+   
+
+%     % Check the length of the data and whether it is over 10% of the
+%     % maximum time window. If not, change the maximum timewindow to be 10%
+%     % of the lenght of the resulting measurement
+%     
+%     if 0.1*length(ResultsMat.ImageGridAmp(1, iTime)) < freq*maxTimeWindow
+%         fprintf('process_DFA> maxTimeWindow over 10 %% of data length. \n');
+%         fprintf('process_DFA> Changing maxTimeWindow to be 10 %% of data length \n\n');
+%         maxTimeWindow = (0.1*length(ResultsMat.ImageGridAmp(1, iTime)))/freq;
+%     end
     
-    % Compute DFA
-    [measures,fluctuation] = Compute(data(:, iTime, :),frequency*minTimeWindow,frequency*maxTimeWindow, numTimeWindows, sProcess.options.avgtype.Value(1));
-    sInput.A = measures(:,1);
+    % ===== COMPUTE DFA =====
+    % Do the computation in patches
+    n_parcels = size(ResultsMat.ImageGridAmp,1);
+    measures = zeros(n_parcels,4);
+    fluctuation = zeros(n_parcels,numTimeWindows,3);
+    sizeSegs = 20;                          % process 'sizeSegs'-number of channels or parcels at a time
+    n_segs = floor((n_parcels-1)/sizeSegs);
+    
+    for i=1:n_segs
+        parc_indices = (1 + sizeSegs*(i-1)):(sizeSegs*i);                   % parcel indices
+        [measures(parc_indices,:),fluctuation(parc_indices,:,:)] = Compute(ResultsMat.ImageGridAmp(parc_indices, iTime),freq*minTimeWindow,freq*maxTimeWindow, numTimeWindows, sProcess.options.avgtype.Value(1));
+    end
+    parc_indices = (1+sizeSegs*n_segs):n_parcels;
+    [measures(parc_indices,:),fluctuation(parc_indices,:,:)] = Compute(ResultsMat.ImageGridAmp(parc_indices, iTime),freq*minTimeWindow,freq*maxTimeWindow, numTimeWindows, sProcess.options.avgtype.Value(1));
+    
+    
+    
+    
+    %     [measures,fluctuation] = Compute(ResultsMat.ImageGridAmp(:, iTime),freq*minTimeWindow,freq*maxTimeWindow, numTimeWindows, sProcess.options.avgtype.Value(1));
+
+    
+%     sInput.A = measures(:,1);
     
     % save fluctuations
-    aux_saveMat(fluctuation, sInput.iBlockRow, fileparts(fullfile(protocolInfo.STUDIES,sInput.DataFile)),'Fluctuations.mat');
-    aux_saveMat(measures, sInput.iBlockRow, fileparts(fullfile(protocolInfo.STUDIES,sInput.DataFile)),'Measures.mat');
+%     aux_saveMat(fluctuation, sInput.iBlockRow, fileparts(fullfile(protocolInfo.STUDIES,sInput.DataFile)),'Fluctuations.mat');
+%     aux_saveMat(measures, sInput.iBlockRow, fileparts(fullfile(protocolInfo.STUDIES,sInput.DataFile)),'Measures.mat');
     % save measures
     
     
-    % Copy values to represent the time window
-%     sInput.A = [sInput.A, sInput.A];
-    % Keep only first and last time values
-    sInput.TimeVector = mean([minTimeWindow,sInput.TimeVector(end)]);
-%     if (length(iTime) >= 2)
-%         sInput.TimeVector = [sInput.TimeVector(iTime(1)), sInput.TimeVector(iTime(end))];
-%     % Only one time point: the duplicated time samples must have different time values
-%     else
-%         if (length(sInput.TimeVector) > 2)
-%             sInput.TimeVector = sInput.TimeVector(iTime(1)) + [0, sInput.TimeVector(2)-sInput.TimeVector(1)];
-%         else
-%             sInput.TimeVector = sInput.TimeVector(iTime(1)) + [0, 1e-6];
-%         end
+%     % Copy values to represent the time window
+% %     sInput.A = [sInput.A, sInput.A];
+%     % Keep only first and last time values
+%     sInput.TimeVector = mean([minTimeWindow,sInput.TimeVector(end)]);
+% %     if (length(iTime) >= 2)
+% %         sInput.TimeVector = [sInput.TimeVector(iTime(1)), sInput.TimeVector(iTime(end))];
+% %     % Only one time point: the duplicated time samples must have different time values
+% %     else
+% %         if (length(sInput.TimeVector) > 2)
+% %             sInput.TimeVector = sInput.TimeVector(iTime(1)) + [0, sInput.TimeVector(2)-sInput.TimeVector(1)];
+% %         else
+% %             sInput.TimeVector = sInput.TimeVector(iTime(1)) + [0, 1e-6];
+% %         end
+% %     end
+%     % Build file tag
+%     sInput.CommentTag = [sProcess.FileTag '(' num2str(numTimeWindows) ' win, ' num2str(minTimeWindow,3) '-' num2str(maxTimeWindow,3) ' s, ' avgtag ')'];
+%     % Do not keep the Std/TFmask fields in the output
+%     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
+%         sInput.Std = [];
 %     end
-    % Build file tag
-    sInput.CommentTag = [sProcess.FileTag '(' num2str(numTimeWindows) ' win, ' num2str(minTimeWindow,3) '-' num2str(maxTimeWindow,3) ' s, ' avgtag ')'];
-    % Do not keep the Std/TFmask fields in the output
-    if isfield(sInput, 'Std') && ~isempty(sInput.Std)
-        sInput.Std = [];
-    end
-    if isfield(sInput, 'TFmask') && ~isempty(sInput.TFmask)
-        sInput.TFmask = [];
-    end
+%     if isfield(sInput, 'TFmask') && ~isempty(sInput.TFmask)
+%         sInput.TFmask = [];
+%     end
+    % ===== SAVE FILE =====
+    % Create returned structure 
+    NewMat = ResultsMat;
+    NewMat.ImageGridAmp  = measures(:,1);   % save alpha as ImageGridAmp
+    NewMat.ImagingKernel = [];
+    % NewMat.Comment       = [NewMat.Comment, ' | atlas' num2str(length(sScouts))];
+    NewMat.Comment       = [NewMat.Comment, ' | DFA (', num2str(numTimeWindows), ' win, ', num2str(minTimeWindow,3), '-', num2str(maxTimeWindow,3), ' s, ', avgtag, ', length ', num2str(round(length(iTime)/freq)), 's' , ')' ];
+    NewMat.Time          = [];
+    NewMat.Measures      = measures;
+    NewMat.Fluctuation   = fluctuation;
+    NewMat.AnalysisLength = length(iTime);
+    % Add history entry
+    NewMat = bst_history('add', NewMat, 'dfa', ['DFA: ', num2str(numTimeWindows), ' win, ', num2str(minTimeWindow,3), '-', num2str(maxTimeWindow,3), ' s, ', avgtag]);
+    % Get output study
+    sStudy = bst_get('Study', sInput.iStudy);
+    % File tag
+    fileTag = 'results_dfa';
+    % Output filename
+    OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), fileTag);
+    % Save on disk
+    bst_save(OutputFiles{1}, NewMat, 'v6');
+    % Register in database
+    db_add_data(sInput.iStudy, OutputFiles{1}, NewMat);
 end
 
 
