@@ -1,13 +1,17 @@
 %% Calculate DFA exponent
-% measures = [alpha,rsq,b_index,conf]
-% Sami Auno, 14.11.2018
+% measures = [DFA-exponents (ie alpha), Root mean square error, b_index (See Monto et al. 2007), 95 confidence for alpha]
+% fluctiation = [ 10-base logarithm of fluctuation, time windows, variance of standard deviation of the detrended signal profile in each time window ]
+
+% references:
+% Hardstone R, Poil S-S, Schiavone G, Jansen R, Nikulin VV, Mansvelder HD, et al. Detrended Fluctuation Analysis: A Scale-Free View on Neuronal Oscillations. Frontiers in Physiology. 2012;3.
+% Monto S, Vanhatalo S, Holmes MD, Palva JM. Epileptogenic Neocortical Networks Are Revealed by Abnormal Temporal Dynamics in Seizure-Free Subdural EEG. Cerebral Cortex. 2007 Jun 1;17(6):1386–93. 
+
+
+% Sami Auno, 2020
 
 
 function [measures,fluctuation] = routine_dfa_calc(DATA, minSampleWindow, maxSampleWindow, numTimeWindows, avgFlag)
 
-% if minSampleWindow < 10
-%     minSampleWindow = 10;
-% end
 
 [N_chan,N_data] = size(DATA);
 fluctuation = nan(N_chan,numTimeWindows,3);
@@ -30,7 +34,7 @@ n_vec = 2*floor(logspace(log10(minSampleWindow),log10(maxSampleWindow),res)/2); 
 
 % Check that the longest time window (max(n_vec)) is not over 10% of the
 % total data length. In case it is, exclude those time windows that are
-% over 10% from the data set
+% over 10% from the data set.
 if n_vec(end) > N_data*0.1
     fprintf('routine_dfa_calc> maxTimeWindow over 10 %% of data length. \n');
     
@@ -44,7 +48,7 @@ end
 
 F_n = zeros(N_chan,res); % fluctuation as a function of n_vec
 F_var = zeros(N_chan,res);
-alpha = zeros(N_chan,1);
+alpha = zeros(N_chan,1); % DFA exponents
 rsq = zeros(N_chan,1);
 b_index = zeros(N_chan,1);
 conf = zeros(N_chan,1);
