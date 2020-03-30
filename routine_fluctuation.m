@@ -1,4 +1,9 @@
-% this function computes the data fluctuation
+
+%% Routine function for calculating fluctuation
+% [F,F_var] = routine_fluctuation(DATA, n, N_data, N_chan, avgFlag)
+% return fluctuation F and variance of fluctuation.
+
+% function computes the data fluctuation
 function [F,F_var] = routine_fluctuation(DATA, n, N_data, N_chan, avgFlag)
 
     div = floor(2*(N_data - n)/n) + 1;
