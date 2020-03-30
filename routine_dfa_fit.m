@@ -1,5 +1,10 @@
-% This function calculates the scaling exponent alpha, plus other
-% metrics. It does fitting in logarithmic space
+%% Routine function for calculating DFA exponent alpha
+% and other variables.
+% [alpha,Rsqrd, b_index,conf] = routine_dfa_fit(n_vec,F_n,res,weights)
+
+
+% Sami Auno, 2020
+
 function [alpha,Rsqrd, b_index,conf] = routine_dfa_fit(n_vec,F_n,res,weights)
     
     % calculate linear and parabolic regression
